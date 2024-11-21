@@ -4,8 +4,8 @@ import random
 import numpy as np
 
 from helpers.utils import normalize_rows, sigmoid, get_negative_samples
-from q3a_softmax import softmax
-from q3b_gradcheck import gradcheck_naive
+from q2a_softmax import softmax
+from q2b_gradcheck import gradcheck_naive
 
 
 def naive_softmax_loss_and_gradient(
@@ -36,13 +36,30 @@ def naive_softmax_loss_and_gradient(
     grad_outside_vecs -- the gradient with respect to all the outside word vectors
                     (dJ / dU)
     """
+    scores = outside_vectors @ center_word_vec  # Shape: (V,)
+    
+    # Apply softmax to get probabilities
+    exp_scores = np.exp(scores - np.max(scores))  # For numerical stability
+    probs = exp_scores / np.sum(exp_scores)  # Shape: (V,)
 
-    ### YOUR CODE HERE
-    raise NotImplementedError
-    ### END YOUR CODE
+    # Compute the loss using the softmax formula
+    loss = -np.log(probs[outside_word_idx])
+
+    # Gradient with respect to the center word vector
+    grad_center_vec = np.sum(
+        probs[:, np.newaxis] * outside_vectors, axis=0
+    ) - outside_vectors[outside_word_idx]
+
+    # Gradient with respect to outside word vectors
+    grad_outside_vecs = probs[:, np.newaxis] * center_word_vec[np.newaxis, :]
+    grad_outside_vecs[outside_word_idx] -= center_word_vec
 
     return loss, grad_center_vec, grad_outside_vecs
 
+
+def sigmoid(x):
+    """Sigmoid function."""
+    return 1 / (1 + np.exp(-x))
 
 def neg_sampling_loss_and_gradient(
         center_word_vec,
@@ -65,14 +82,26 @@ def neg_sampling_loss_and_gradient(
     Arguments/Return Specifications: same as naive_softmax_loss_and_gradient
     """
 
-    # Negative sampling of words is done for you. Do not modify this if you
-    # wish to match the autograder and receive points!
     neg_sample_word_indices = get_negative_samples(outside_word_idx, dataset, K)
     indices = [outside_word_idx] + neg_sample_word_indices
 
-    ### YOUR CODE HERE
-    raise NotImplementedError
-    ### END YOUR CODE
+    grad_center_vec = np.zeros_like(center_word_vec)
+    grad_outside_vecs = np.zeros_like(outside_vectors)
+
+    true_outside_vec = outside_vectors[outside_word_idx]
+    true_score = sigmoid(np.dot(true_outside_vec, center_word_vec))
+    loss = -np.log(true_score)
+
+    grad_center_vec += (true_score - 1) * true_outside_vec
+    grad_outside_vecs[outside_word_idx] += (true_score - 1) * center_word_vec
+
+    for neg_idx in neg_sample_word_indices:
+        neg_vec = outside_vectors[neg_idx]
+        neg_score = sigmoid(-np.dot(neg_vec, center_word_vec))
+        loss -= np.log(neg_score)
+
+        grad_center_vec += (1 - neg_score) * (-neg_vec)
+        grad_outside_vecs[neg_idx] += (1 - neg_score) * (-center_word_vec)
 
     return loss, grad_center_vec, grad_outside_vecs
 
@@ -111,9 +140,19 @@ def skipgram(current_center_word, outside_words, word2ind,
     grad_center_vecs = np.zeros(center_word_vectors.shape)
     grad_outside_vectors = np.zeros(outside_vectors.shape)
 
-    ### YOUR CODE HERE
-    raise NotImplementedError
-    ### END YOUR CODE
+    center_idx = word2ind[current_center_word]
+    center_word_vec = center_word_vectors[center_idx]
+
+    for outside_word in outside_words:
+        outside_idx = word2ind[outside_word]
+
+        curr_loss, grad_center, grad_outside = word2vec_loss_and_gradient(
+            center_word_vec, outside_idx, outside_vectors, dataset)
+
+        loss += curr_loss
+
+        grad_center_vecs[center_idx] += grad_center
+        grad_outside_vectors += grad_outside
 
     return loss, grad_center_vecs, grad_outside_vectors
 
