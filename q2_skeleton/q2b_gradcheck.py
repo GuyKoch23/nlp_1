@@ -23,29 +23,26 @@ def gradcheck_naive(f, x, gradient_text=""):
     while not it.finished:
         ix = it.multi_index
 
-        # Try modifying x[ix] with h defined above to compute numerical
-        # gradients (numgrad).
+        x_plus_h = np.copy(x)
+        x_minus_h = np.copy(x)
 
-        # Use the centered difference of the gradient.
-        # It has smaller asymptotic error than forward / backward difference
-        # methods. If you are curious, check out here:
-        # https://math.stackexchange.com/questions/2326181/when-to-use-forward-or-central-difference-approximations
+        x_plus_h[ix] += h
+        x_minus_h[ix] -= h
 
-        # Make sure you call random.setstate(rndstate)
-        # before calling f(x) each time. This will make it possible
-        # to test cost functions with built in randomness later.
+        random.setstate(rndstate)
+        fx_plus_h, _ = f(x_plus_h)
 
-        ### YOUR CODE HERE:
-        raise NotImplementedError
-        ### END YOUR CODE
+        random.setstate(rndstate)
+        fx_minus_h, _ = f(x_minus_h)
 
-        # Compare gradients
+        numgrad = (fx_plus_h - fx_minus_h) / (2 * h)
+
         assert_allclose(numgrad, grad[ix], rtol=1e-5,
                         err_msg=f"Gradient check failed for {gradient_text}.\n"
                                 f"First gradient error found at index {ix} in the vector of gradients\n"
                                 f"Your gradient: {grad[ix]} \t Numerical gradient: {numgrad}")
 
-        it.iternext()  # Step to next dimension
+        it.iternext()
 
     print("Gradient check passed!")
 
