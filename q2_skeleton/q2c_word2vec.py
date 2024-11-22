@@ -59,34 +59,50 @@ def sigmoid(x):
     """Sigmoid function."""
     return 1 / (1 + np.exp(-x))
 
+
 def neg_sampling_loss_and_gradient(
     center_word_vec, outside_word_idx, outside_vectors, dataset, K=10
 ):
-    neg_sample_word_indices = get_negative_samples(outside_word_idx, dataset, K)
-    # indices = [outside_word_idx] + neg_sample_word_indices
+    """ Negative sampling loss function for word2vec models
 
-    grad_outside_vecs = np.zeros_like(outside_vectors)
+    Implement the negative sampling loss and gradients for a center_word_vec
+    and a outside_word_idx word vector as a building block for word2vec
+    models. K is the number of negative samples to take.
 
-    true_outside_vec = outside_vectors[outside_word_idx]
-    loss = calc_vectors_neg_log_sigmoid(true_outside_vec, center_word_vec)
+    Note: The same word may be negatively sampled multiple times. For
+    example if an outside word is sampled twice, you shall have to
+    double count the gradient with respect to this word. Thrice if
+    it was sampled three times, and so forth.
+
+    Arguments/Return Specifications: same as naive_softmax_loss_and_gradient
+    """
     
-    # Calc center
-    grad_center_vec = (sigmoid(np.dot(true_outside_vec, center_word_vec)) - 1) * true_outside_vec
-    for neg_index in neg_sample_word_indices:
-        neg_vec = outside_vectors[neg_index]
-        grad_center_vec += (1 - sigmoid(np.dot(neg_vec, center_word_vec))) * neg_vec
+    neg_sample_word_indices = get_negative_samples(outside_word_idx, dataset, K)
+    indices = [outside_word_idx] + neg_sample_word_indices
 
-    # Calc outside
-    grad_outside_vecs[outside_word_idx] += (sigmoid(np.dot(true_outside_vec, center_word_vec)) - 1) * center_word_vec
+    loss = 0.0
+    grad_center_vec = np.zeros(center_word_vec.shape)
+    grad_outside_vecs = np.zeros(outside_vectors.shape)
 
-    # Calc negative samples
-    for neg_index in neg_sample_word_indices:
-        grad_outside_vecs[neg_index] += (1 - sigmoid(-1 * np.dot(outside_vectors[neg_index], center_word_vec))) * center_word_vec
+    outside_vec = outside_vectors[outside_word_idx]
+    temp = sigmoid(np.dot(outside_vec, center_word_vec))
+    loss -= np.log(temp)
+    grad_center_vec += (temp - 1) * outside_vec
+    grad_outside_vecs[outside_word_idx] += (temp - 1) * center_word_vec
+
+    for idx in neg_sample_word_indices:
+        u_k = outside_vectors[idx]
+        temp = sigmoid(-np.dot(u_k, center_word_vec))
+        loss -= np.log(temp)
+        grad_center_vec += (1 - temp) * u_k
+        grad_outside_vecs[idx] += (1 - temp) * center_word_vec
 
     return loss, grad_center_vec, grad_outside_vecs
 
+
 def calc_vectors_neg_log_sigmoid(vector1, vector2):
     return -np.log(sigmoid(np.dot(vector1, vector2)))
+
 
 def skipgram(
     current_center_word,
