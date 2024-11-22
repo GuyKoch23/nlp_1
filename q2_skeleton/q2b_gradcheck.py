@@ -68,9 +68,70 @@ def your_gradcheck_test():
     your additional tests be graded.
     """
     print("Running your sanity checks...")
-    ### YOUR OPTIONAL CODE HERE
-    pass
-    ### END YOUR CODE
+    # Scalar input test
+    quad = lambda x: (np.sum(x ** 2), 2 * x)
+    x = np.array(123.456)
+    gradcheck_naive(quad, x)
+
+    # 1D array test
+    quad = lambda x: (np.sum(x ** 2), 2 * x)
+    x = np.random.randn(3)
+    gradcheck_naive(quad, x)
+
+    # 2D array test
+    quad = lambda x: (np.sum(x ** 2), 2 * x)
+    x = np.random.randn(4, 5)
+    gradcheck_naive(quad, x)
+
+    # Zero input test
+    quad = lambda x: (np.sum(x ** 2), 2 * x)
+    x = np.zeros((3, 3))
+    gradcheck_naive(quad, x)
+
+    # Large numbers test
+    quad = lambda x: (np.sum(x ** 2), 2 * x)
+    x = np.array([1e5, 1e5])
+    gradcheck_naive(quad, x)
+
+    # Custom function test
+    def custom_func(x):
+        fx = np.sum(np.sin(x))
+        grad = np.cos(x)
+        return fx, grad
+
+    x = np.random.randn(5)
+    gradcheck_naive(custom_func, x)
+
+    # Invalid gradient test
+    def wrong_grad(x):
+        fx = np.sum(x ** 2)
+        grad = x  # Wrong gradient (should be 2*x)
+        return fx, grad
+
+    x = np.array([1.0, 2.0])
+
+    # Your gradcheck implementation test
+    def cubic(x):
+        fx = np.sum(x ** 3)
+        grad = 3 * (x ** 2)
+        return fx, grad
+
+    x = np.random.randn(3)
+    gradcheck_naive(cubic, x)
+
+    # Multidimensional input test
+    def matrix_func(x):
+        fx = np.sum(x ** 2 + 2 * x)
+        grad = 2 * x + 2
+        return fx, grad
+
+    x = np.random.randn(3, 3, 3)
+    gradcheck_naive(matrix_func, x)
+
+    # Edge cases test
+    quad = lambda x: (np.sum(x ** 2), 2 * x)
+    x = np.array([1e-10, 1e-10])  # Very small numbers
+    gradcheck_naive(quad, x)
 
 
 if __name__ == "__main__":
