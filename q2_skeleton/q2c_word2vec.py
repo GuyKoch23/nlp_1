@@ -33,11 +33,7 @@ def naive_softmax_loss_and_gradient(
     grad_outside_vecs -- the gradient with respect to all the outside word vectors
                     (dJ / dU)
     """
-    scores = outside_vectors @ center_word_vec  # Shape: (V,)
-
-    # Apply softmax to get probabilities
-    exp_scores = np.exp(scores - np.max(scores))  # For numerical stability
-    probs = exp_scores / np.sum(exp_scores)  # Shape: (V,)
+    probs = softmax(outside_vectors @ center_word_vec)
 
     # Compute the loss using the softmax formula
     loss = -np.log(probs[outside_word_idx])
