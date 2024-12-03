@@ -40,9 +40,8 @@ def save_params(iter_, params):
         pickle.dump(random.getstate(), f)
 
 
-def sgd(f, x0, step, iterations, postprocessing=None, use_saved=False,
-        print_every=10):
-    """ Stochastic Gradient Descent
+def sgd(f, x0, step, iterations, postprocessing=None, use_saved=False, print_every=10):
+    """Stochastic Gradient Descent
 
     Implement the stochastic gradient descent method in this function.
 
@@ -85,6 +84,7 @@ def sgd(f, x0, step, iterations, postprocessing=None, use_saved=False,
     for iter_ in range(start_iter + 1, iterations + 1):
         # You might want to print the progress every few iterations.
 
+        loss = None
         loss, grad = f(x)
         x = x - step * grad
 
@@ -93,7 +93,7 @@ def sgd(f, x0, step, iterations, postprocessing=None, use_saved=False,
             if not exploss:
                 exploss = loss
             else:
-                exploss = .95 * exploss + .05 * loss
+                exploss = 0.95 * exploss + 0.05 * loss
             print("iter %d: %f" % (iter_, exploss))
 
         if iter_ % SAVE_PARAMS_EVERY == 0 and use_saved:
@@ -106,7 +106,7 @@ def sgd(f, x0, step, iterations, postprocessing=None, use_saved=False,
 
 
 def sanity_check():
-    quad = lambda x: (np.sum(x ** 2), x * 2)
+    quad = lambda x: (np.sum(x**2), x * 2)
 
     print("Running sanity checks...")
     t1 = sgd(quad, 0.5, 0.01, 1000, print_every=100)

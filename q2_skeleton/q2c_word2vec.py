@@ -34,17 +34,11 @@ def naive_softmax_loss_and_gradient(
                     (dJ / dU)
     """
     probs = softmax(outside_vectors @ center_word_vec)
-
-    # Compute the loss using the softmax formula
     loss = -np.log(probs[outside_word_idx])
-
-    # Gradient with respect to the center word vector
     grad_center_vec = (
         np.sum(probs[:, np.newaxis] * outside_vectors, axis=0)
         - outside_vectors[outside_word_idx]
     )
-
-    # Gradient with respect to outside word vectors
     grad_outside_vecs = probs[:, np.newaxis] * center_word_vec[np.newaxis, :]
     grad_outside_vecs[outside_word_idx] -= center_word_vec
 
@@ -59,7 +53,7 @@ def sigmoid(x):
 def neg_sampling_loss_and_gradient(
     center_word_vec, outside_word_idx, outside_vectors, dataset, K=10
 ):
-    """ Negative sampling loss function for word2vec models
+    """Negative sampling loss function for word2vec models
 
     Implement the negative sampling loss and gradients for a center_word_vec
     and a outside_word_idx word vector as a building block for word2vec
@@ -72,26 +66,20 @@ def neg_sampling_loss_and_gradient(
 
     Arguments/Return Specifications: same as naive_softmax_loss_and_gradient
     """
-    
+
     neg_sample_word_indices = get_negative_samples(outside_word_idx, dataset, K)
     indices = [outside_word_idx] + neg_sample_word_indices
 
-    loss = 0.0
-    grad_center_vec = np.zeros(center_word_vec.shape)
-    grad_outside_vecs = np.zeros(outside_vectors.shape)
-
-    outside_vec = outside_vectors[outside_word_idx]
-    temp = sigmoid(np.dot(outside_vec, center_word_vec))
-    loss -= np.log(temp)
-    grad_center_vec += (temp - 1) * outside_vec
-    grad_outside_vecs[outside_word_idx] += (temp - 1) * center_word_vec
-
-    for idx in neg_sample_word_indices:
-        u_k = outside_vectors[idx]
-        temp = sigmoid(-np.dot(u_k, center_word_vec))
-        loss -= np.log(temp)
-        grad_center_vec += (1 - temp) * u_k
-        grad_outside_vecs[idx] += (1 - temp) * center_word_vec
+    indices = np.array(indices)
+    outside_vecs = outside_vectors[indices]
+    labels = np.array([1] + [-1] * K)
+    scores = np.dot(outside_vecs, center_word_vec) * labels
+    sigmoid_scores = sigmoid(scores)
+    loss = -np.sum(np.log(sigmoid_scores))
+    sigmoid_diffs = labels * (sigmoid_scores - 1)
+    grad_center_vec = np.dot(sigmoid_diffs, outside_vecs)
+    grad_outside_vecs = np.zeros_like(outside_vectors)
+    np.add.at(grad_outside_vecs, indices, np.outer(sigmoid_diffs, center_word_vec))
 
     return loss, grad_center_vec, grad_outside_vecs
 
@@ -142,18 +130,20 @@ def skipgram(
 
     center_idx = word2ind[current_center_word]
     center_word_vec = center_word_vectors[center_idx]
-
-    for outside_word in outside_words:
-        outside_idx = word2ind[outside_word]
-
-        curr_loss, grad_center, grad_outside = word2vec_loss_and_gradient(
-            center_word_vec, outside_idx, outside_vectors, dataset
-        )
-
-        loss += curr_loss
-
-        grad_center_vecs[center_idx] += grad_center
-        grad_outside_vectors += grad_outside
+    outside_indices = np.array(
+        [word2ind[outside_word] for outside_word in outside_words]
+    )
+    losses, grad_centers, grad_outside_vecs = zip(
+        *[
+            word2vec_loss_and_gradient(
+                center_word_vec, outside_idx, outside_vectors, dataset
+            )
+            for outside_idx in outside_indices
+        ]
+    )
+    loss = np.sum(losses)
+    grad_center_vecs[center_idx] = np.sum(grad_centers, axis=0)
+    grad_outside_vectors = np.sum(grad_outside_vecs, axis=0)
 
     return loss, grad_center_vecs, grad_outside_vectors
 
