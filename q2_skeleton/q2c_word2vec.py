@@ -72,20 +72,20 @@ def neg_sampling_loss_and_gradient(
 
     indices = np.array(indices)
     outside_vecs = outside_vectors[indices]
+    # We use positive label for the outside word and negative labels for the negative samples
     labels = np.array([1] + [-1] * K)
+
     scores = np.dot(outside_vecs, center_word_vec) * labels
     sigmoid_scores = sigmoid(scores)
     loss = -np.sum(np.log(sigmoid_scores))
+
+    # Compute Gradients
     sigmoid_diffs = labels * (sigmoid_scores - 1)
     grad_center_vec = np.dot(sigmoid_diffs, outside_vecs)
     grad_outside_vecs = np.zeros_like(outside_vectors)
     np.add.at(grad_outside_vecs, indices, np.outer(sigmoid_diffs, center_word_vec))
 
     return loss, grad_center_vec, grad_outside_vecs
-
-
-def calc_vectors_neg_log_sigmoid(vector1, vector2):
-    return -np.log(sigmoid(np.dot(vector1, vector2)))
 
 
 def skipgram(
@@ -128,21 +128,22 @@ def skipgram(
     grad_center_vecs = np.zeros(center_word_vectors.shape)
     grad_outside_vectors = np.zeros(outside_vectors.shape)
 
-    center_idx = word2ind[current_center_word]
-    center_word_vec = center_word_vectors[center_idx]
-    outside_indices = np.array(
+    center_index = word2ind[current_center_word]
+    center_word_vector = center_word_vectors[center_index]
+    outside_indexes = np.array(
         [word2ind[outside_word] for outside_word in outside_words]
     )
+    # We use zip to saperate the losses, grad_centers and grad_outside_vecs and collect them into a list
     losses, grad_centers, grad_outside_vecs = zip(
         *[
             word2vec_loss_and_gradient(
-                center_word_vec, outside_idx, outside_vectors, dataset
+                center_word_vector, outside_idx, outside_vectors, dataset
             )
-            for outside_idx in outside_indices
+            for outside_idx in outside_indexes
         ]
     )
     loss = np.sum(losses)
-    grad_center_vecs[center_idx] = np.sum(grad_centers, axis=0)
+    grad_center_vecs[center_index] = np.sum(grad_centers, axis=0)
     grad_outside_vectors = np.sum(grad_outside_vecs, axis=0)
 
     return loss, grad_center_vecs, grad_outside_vectors
